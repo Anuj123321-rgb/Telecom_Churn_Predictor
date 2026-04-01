@@ -16,7 +16,7 @@ This project predicts whether a telecom customer is likely to churn using machin
 - Render (deployment)
 
 ## 🌐 Live Demo
-👉 [Click Here]([YOUR_RENDER_LINK](https://telecom-churn-predictor-mxx8.onrender.com))
+👉 https://telecom-churn-predictor-mxx8.onrender.com
 
 ## 📊 Model Details
 - Algorithm: Random Forest
