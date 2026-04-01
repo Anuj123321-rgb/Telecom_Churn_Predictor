@@ -1,203 +1,172 @@
 import streamlit as st
 import pandas as pd
 import pickle
+import matplotlib.pyplot as plt
 
+# -------------------------------
+# PAGE CONFIG
+# -------------------------------
+st.set_page_config(page_title="Churn Dashboard", layout="wide")
+
+# -------------------------------
+# CUSTOM CSS (SaaS STYLE)
+# -------------------------------
 st.markdown("""
 <style>
-.main {
+body {
     background-color: #0E1117;
 }
 .block-container {
-    padding-top: 2rem;
+    padding-top: 1rem;
 }
 h1, h2, h3 {
     color: #00ADB5;
 }
-.stButton>button {
-    background-color: #00ADB5;
-    color: white;
-    border-radius: 10px;
-    height: 3em;
+.card {
+    background-color: #1c1f26;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.5);
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Load model
+# -------------------------------
+# LOAD MODEL
+# -------------------------------
 model = pickle.load(open("pipeline.pkl", "rb"))
 
-st.set_page_config(page_title="Churn Predictor", layout="centered")
-
-st.title("📊 Customer Churn Prediction")
-st.markdown("Fill details to predict churn")
-
-st.divider()
+# -------------------------------
+# SIDEBAR NAVIGATION
+# -------------------------------
+st.sidebar.title("📊 Navigation")
+page = st.sidebar.radio("Go to", ["🏠 Dashboard", "🔮 Prediction", "📈 Insights"])
 
 # -------------------------------
-# BASIC INFO
+# SIDEBAR INPUTS
 # -------------------------------
-st.subheader("👤 Customer Info")
+st.sidebar.markdown("---")
+st.sidebar.title("⚙️ Inputs")
 
-col1, col2 = st.columns(2)
+Gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
+SeniorCitizen = st.sidebar.selectbox("Senior Citizen", [0, 1])
+Partner = st.sidebar.selectbox("Partner", ["Yes", "No"])
+Dependents = st.sidebar.selectbox("Dependents", ["Yes", "No"])
 
-with col1:
-    Gender = st.selectbox("Gender", ["Male", "Female"])
-    SeniorCitizen = st.selectbox("Senior Citizen", [0, 1])
-    Partner = st.selectbox("Partner", ["Yes", "No"])
-    Dependents = st.selectbox("Dependents", ["Yes", "No"])
+Tenure = st.sidebar.slider("Tenure", 0, 72, 12)
+MonthlyCharges = st.sidebar.slider("Monthly Charges", 0.0, 150.0, 50.0)
+TotalCharges = st.sidebar.number_input("Total Charges", 0.0, 10000.0, 2000.0)
 
-with col2:
-    Tenure = st.slider("Tenure (months)", 0, 72, 12)
-    MonthlyCharges = st.slider("Monthly Charges", 0.0, 150.0, 50.0)
-    TotalCharges = st.number_input("Total Charges", 0.0, 10000.0, 2000.0)
+PhoneService = st.sidebar.selectbox("Phone Service", ["Yes", "No"])
+MultipleLines = st.sidebar.selectbox("Multiple Lines", ["No", "Yes", "No phone service"])
 
-# -------------------------------
-# SERVICES
-# -------------------------------
-st.subheader("📡 Services")
+InternetService = st.sidebar.selectbox("Internet Service", ["DSL", "Fiber optic", "No"])
 
-PhoneService = st.selectbox("Phone Service", ["Yes", "No"])
+OnlineSecurity = st.sidebar.selectbox("Online Security", ["No", "Yes", "No internet service"])
+OnlineBackup = st.sidebar.selectbox("Online Backup", ["No", "Yes", "No internet service"])
+DeviceProtection = st.sidebar.selectbox("Device Protection", ["No", "Yes", "No internet service"])
+TechSupport = st.sidebar.selectbox("Tech Support", ["No", "Yes", "No internet service"])
 
-MultipleLines = st.selectbox(
-    "Multiple Lines",
-    ["No", "Yes", "No phone service"]
-)
+StreamingTV = st.sidebar.selectbox("Streaming TV", ["No", "Yes", "No internet service"])
+StreamingMovies = st.sidebar.selectbox("Streaming Movies", ["No", "Yes", "No internet service"])
 
-InternetService = st.selectbox(
-    "Internet Service",
-    ["DSL", "Fiber optic", "No"]
-)
+Contract = st.sidebar.selectbox("Contract", ["Month-to-month", "One year", "Two year"])
+PaperlessBilling = st.sidebar.selectbox("Paperless Billing", ["Yes", "No"])
 
-OnlineSecurity = st.selectbox(
-    "Online Security",
-    ["No", "Yes", "No internet service"]
-)
-
-OnlineBackup = st.selectbox(
-    "Online Backup",
-    ["No", "Yes", "No internet service"]
-)
-
-DeviceProtection = st.selectbox(
-    "Device Protection",
-    ["No", "Yes", "No internet service"]
-)
-
-TechSupport = st.selectbox(
-    "Tech Support",
-    ["No", "Yes", "No internet service"]
-)
-
-StreamingTV = st.selectbox(
-    "Streaming TV",
-    ["No", "Yes", "No internet service"]
-)
-
-StreamingMovies = st.selectbox(
-    "Streaming Movies",
-    ["No", "Yes", "No internet service"]
-)
+PaymentMethod = st.sidebar.selectbox("Payment Method", [
+    "Electronic check",
+    "Mailed check",
+    "Bank transfer (automatic)",
+    "Credit card (automatic)"
+])
 
 # -------------------------------
-# BILLING
+# CREATE INPUT DF
 # -------------------------------
-st.subheader("💳 Billing")
-
-Contract = st.selectbox(
-    "Contract",
-    ["Month-to-month", "One year", "Two year"]
-)
-
-PaperlessBilling = st.selectbox("Paperless Billing", ["Yes", "No"])
-
-PaymentMethod = st.selectbox(
-    "Payment Method",
-    [
-        "Electronic check",
-        "Mailed check",
-        "Bank transfer (automatic)",
-        "Credit card (automatic)"
-    ]
-)
-
-# -------------------------------
-# VALIDATION
-# -------------------------------
-def validate():
-    if TotalCharges < MonthlyCharges * Tenure * 0.5:
-        st.warning("⚠️ TotalCharges seems too low")
-        return False
-    return True
-
-st.divider()
+input_df = pd.DataFrame({
+    "Gender": [Gender],
+    "SeniorCitizen": [SeniorCitizen],
+    "Partner": [Partner],
+    "Dependents": [Dependents],
+    "Tenure": [Tenure],
+    "PhoneService": [PhoneService],
+    "MultipleLines": [MultipleLines],
+    "InternetService": [InternetService],
+    "OnlineSecurity": [OnlineSecurity],
+    "OnlineBackup": [OnlineBackup],
+    "DeviceProtection": [DeviceProtection],
+    "TechSupport": [TechSupport],
+    "StreamingTV": [StreamingTV],
+    "StreamingMovies": [StreamingMovies],
+    "Contract": [Contract],
+    "PaperlessBilling": [PaperlessBilling],
+    "PaymentMethod": [PaymentMethod],
+    "MonthlyCharges": [MonthlyCharges],
+    "TotalCharges": [TotalCharges]
+})
 
 # -------------------------------
-# PREDICT
+# DASHBOARD PAGE
 # -------------------------------
-if st.button("🔍 Predict", use_container_width=True):
+if page == "🏠 Dashboard":
+    st.title("📊 Telecom Churn Dashboard")
 
-    if validate():
+    col1, col2, col3 = st.columns(3)
 
-        input_df = pd.DataFrame({
-            "Gender": [Gender],
-            "SeniorCitizen": [SeniorCitizen],
-            "Partner": [Partner],
-            "Dependents": [Dependents],
-            "Tenure": [Tenure],
-            "PhoneService": [PhoneService],
-            "MultipleLines": [MultipleLines],
-            "InternetService": [InternetService],
-            "OnlineSecurity": [OnlineSecurity],
-            "OnlineBackup": [OnlineBackup],
-            "DeviceProtection": [DeviceProtection],
-            "TechSupport": [TechSupport],
-            "StreamingTV": [StreamingTV],
-            "StreamingMovies": [StreamingMovies],
-            "Contract": [Contract],
-            "PaperlessBilling": [PaperlessBilling],
-            "PaymentMethod": [PaymentMethod],
-            "MonthlyCharges": [MonthlyCharges],
-            "TotalCharges": [TotalCharges]
-        })
+    col1.markdown(f"<div class='card'>👥 Gender<br><b>{Gender}</b></div>", unsafe_allow_html=True)
+    col2.markdown(f"<div class='card'>📅 Tenure<br><b>{Tenure}</b></div>", unsafe_allow_html=True)
+    col3.markdown(f"<div class='card'>💰 Monthly Charges<br><b>${MonthlyCharges}</b></div>", unsafe_allow_html=True)
+
+    st.divider()
+
+    st.subheader("📌 Customer Summary")
+    st.write(input_df)
+
+# -------------------------------
+# PREDICTION PAGE
+# -------------------------------
+elif page == "🔮 Prediction":
+
+    st.title("🔮 Churn Prediction")
+
+    if st.button("Predict", use_container_width=True):
 
         prediction = model.predict(input_df)[0]
         prob = model.predict_proba(input_df)[0][1]
 
-        st.subheader("📈 Result")
-
         if prediction == 1:
-            st.error(f"⚠️ Customer likely to churn (Prob: {prob:.2f})")
+            st.markdown(f"<div class='card'>⚠️ High Churn Risk<br>Probability: {prob:.2f}</div>", unsafe_allow_html=True)
         else:
-            st.success(f"✅ Customer will stay (Prob: {prob:.2f})")
+            st.markdown(f"<div class='card'>✅ Customer Will Stay<br>Probability: {prob:.2f}</div>", unsafe_allow_html=True)
 
         st.progress(float(prob))
 
-        
+# -------------------------------
+# INSIGHTS PAGE
+# -------------------------------
+elif page == "📈 Insights":
 
-import pandas as pd
-import matplotlib.pyplot as plt
-
-if st.checkbox("Show Feature Importance"):
+    st.title("📈 Model Insights")
 
     model_rf = model.named_steps["model"]
     preprocessor = model.named_steps["preprocessor"]
 
-    # Get feature names
     ohe = preprocessor.named_transformers_["cat"]
     cat_features = ohe.get_feature_names_out()
-
     num_features = preprocessor.transformers_[0][2]
 
     all_features = list(num_features) + list(cat_features)
 
     importances = model_rf.feature_importances_
 
-    # Create dataframe
     feat_df = pd.DataFrame({
         "Feature": all_features,
         "Importance": importances
     }).sort_values(by="Importance", ascending=False)
-    feat_df = feat_df.head(10)
 
-    st.bar_chart(feat_df.set_index("Feature"))
+    st.subheader("Top Features")
+    st.bar_chart(feat_df.set_index("Feature").head(10))
 
-    
+    fig, ax = plt.subplots()
+    ax.pie(feat_df.head(5)["Importance"], labels=feat_df.head(5)["Feature"], autopct='%1.1f%%')
+    st.pyplot(fig)
